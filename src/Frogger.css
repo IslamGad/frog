@@ -1,0 +1,344 @@
+/* ─── Page Wrapper ───────────────────────────────────────────────────────── */
+.fg-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 16px;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 0%, #1a2a4a 0%, #0d1117 70%);
+  font-family: 'Courier New', monospace;
+  color: #fff;
+  user-select: none;
+}
+
+/* ─── HUD ────────────────────────────────────────────────────────────────── */
+.fg-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 600px;
+}
+
+.fg-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.fg-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: #7f8c8d;
+  text-transform: uppercase;
+}
+
+.fg-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #f1c40f;
+  line-height: 1;
+}
+
+.fg-title-badge {
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  color: #2ecc71;
+  font-weight: bold;
+}
+
+/* ─── Game Board ─────────────────────────────────────────────────────────── */
+.fg-board {
+  position: relative;
+  overflow: hidden;
+  border: 3px solid #2c3e50;
+  border-radius: 6px;
+  /* Single, smaller-radius shadow — cheaper to rasterize on weak TV GPUs
+     than the previous double large-blur shadow. Painted once (board is
+     static), not per animation frame, but still costs on first paint. */
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.6);
+}
+
+/* ─── Safe Zones ─────────────────────────────────────────────────────────── */
+.fg-zone {
+  position: absolute;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fg-zone span {
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  font-weight: bold;
+}
+
+.fg-goal {
+  background: linear-gradient(135deg, #1a5c38 0%, #27ae60 50%, #1a5c38 100%);
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom: 3px solid #2ecc71;
+}
+
+.fg-start {
+  background: linear-gradient(135deg, #1a5c38 0%, #27ae60 50%, #1a5c38 100%);
+  color: rgba(255, 255, 255, 0.5);
+  border-top: 3px solid #2ecc71;
+}
+
+/* ─── Road Lanes ─────────────────────────────────────────────────────────── */
+.fg-lane {
+  position: absolute;
+  width: 100%;
+  background: #1c2833;
+  box-sizing: border-box;
+}
+
+/* Alternate lane shading for depth */
+.fg-lane:nth-child(odd) {
+  background: #212f3d;
+}
+
+/* Dashed centre-line divider */
+.fg-dash {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    #f1c40f 0px,   #f1c40f 22px,
+    transparent 22px, transparent 44px
+  );
+  opacity: 0.3;
+}
+
+/* ─── Cars ───────────────────────────────────────────────────────────────── */
+.fg-car {
+  position: absolute;
+  left: 0;       /* GSAP drives x (and the facing scaleX flip) via transform */
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  /* No filter: drop-shadow() here. With up to ~12 of these translating every
+     frame, per-element drop-shadow filters put real pressure on the weak
+     GPUs/fill-rate in TV sets (each becomes its own filtered compositor
+     layer). Pre-promote to a compositor layer instead so GSAP's transform
+     writes stay GPU-only and never trigger layout/paint. */
+  will-change: transform;
+}
+
+/* ─── Frog ────────────────────────────────────────────────────────────────── */
+/* Outer hitbox: sized/positioned by GSAP x,y — this is what collision reads. */
+.fg-frog {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 10;
+  will-change: transform;
+}
+
+/* Visual sprite sits larger than and centered over the (smaller) hitbox above,
+   so the bigger illustrated frog doesn't change collision balance. */
+.fg-frog-visual {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Cast shadow on the ground below the frog; scales/fades with the hop arc. */
+.fg-frog-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 70%;
+  height: 22%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 75%);
+  border-radius: 50%;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Visual-only layer: hop arc translateY + squash/stretch scale + hit wobble. */
+.fg-frog-squash {
+  position: absolute;
+  inset: 0;
+  /* No drop-shadow filter: this layer animates transform every frame during
+     a hop, and a filtered layer is far costlier to composite on TV GPUs
+     than a plain transform-only one. The .fg-frog-shadow ellipse underneath
+     already sells the "off the ground" effect without the filter cost. */
+  will-change: transform;
+}
+
+/* Horizontal flip layer, independent of the squash/stretch scale above. */
+.fg-frog-flip {
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.fg-frog-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ─── Screen flash overlay ───────────────────────────────────────────────── */
+.fg-flash {
+  position: absolute;
+  inset: 0;
+  background: #e74c3c;
+  opacity: 0;          /* GSAP drives this to 0.85 then back on hit */
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ─── Lives display ──────────────────────────────────────────────────────── */
+.fg-lives-row {
+  display: flex;
+  gap: 4px;
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.fg-heart {
+  color: #e74c3c;
+  transition: color 0.2s;
+}
+
+.fg-heart--lost {
+  color: #2c3e50;
+}
+
+/* ─── Overlays ───────────────────────────────────────────────────────────── */
+.fg-overlay {
+  position: absolute;
+  inset: 0;
+  /* backdrop-filter: blur() is one of the most expensive effects a browser
+     can run — often unaccelerated (or missing) on embedded TV browsers.
+     A slightly darker flat overlay reads almost identically without it. */
+  background: rgba(0, 0, 0, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+
+.fg-card {
+  background: #0d1117;
+  border: 2px solid #2ecc71;
+  border-radius: 14px;
+  padding: 36px 52px;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(46, 204, 113, 0.2);
+  min-width: 280px;
+}
+
+.fg-card--dead {
+  border-color: #e74c3c;
+  box-shadow: 0 0 30px rgba(231, 76, 60, 0.25);
+}
+
+.fg-card-emoji {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.fg-card h1 {
+  margin: 0 0 12px;
+  font-size: 2rem;
+  letter-spacing: 0.15em;
+  color: #fff;
+}
+
+.fg-card p {
+  margin: 6px 0;
+  color: #95a5a6;
+  font-size: 0.9rem;
+}
+
+.fg-score-big {
+  font-size: 2.5rem !important;
+  color: #f1c40f !important;
+  font-weight: bold;
+  margin: 8px 0 !important;
+}
+
+.fg-new-best {
+  color: #f39c12 !important;
+  font-size: 1rem !important;
+}
+
+/* Arrow key chips */
+.fg-key-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 16px 0 4px;
+}
+
+.fg-key-hint span {
+  background: #1c2833;
+  border: 1px solid #34495e;
+  border-radius: 5px;
+  padding: 4px 9px;
+  font-size: 1.1rem;
+  color: #ecf0f1;
+}
+
+.fg-key-hint em {
+  font-style: normal;
+  color: #7f8c8d;
+  font-size: 0.8rem;
+  margin-left: 4px;
+}
+
+.fg-sub {
+  font-size: 0.78rem !important;
+  color: #566573 !important;
+  margin: 4px 0 !important;
+}
+
+/* ─── CTA Button ─────────────────────────────────────────────────────────── */
+.fg-btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 11px 36px;
+  background: #27ae60;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.fg-btn:hover  { background: #2ecc71; transform: translateY(-1px); }
+.fg-btn:active { background: #1e8449; transform: translateY(0); }
+
+.fg-card--dead .fg-btn {
+  background: #c0392b;
+}
+
+.fg-card--dead .fg-btn:hover  { background: #e74c3c; }
+.fg-card--dead .fg-btn:active { background: #a93226; }
+
+/* ─── Footer hint ────────────────────────────────────────────────────────── */
+.fg-hint {
+  font-size: 0.75rem;
+  color: #566573;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
