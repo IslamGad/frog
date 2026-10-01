@@ -7,10 +7,10 @@ A React + Vite game, optimized to run on smart TV browsers, embedded in a host p
 The game expects to run inside an `<iframe>` on a host TV app page, and has no way to close its own tab/frame. Instead, pressing the remote's **Back** button posts a message to the parent window and leaves the actual closing (removing/hiding the iframe) to the host:
 
 ```js
-window.addEventListener('message', (event) => {
-  if (event.data?.type === 'frog-game:close') {
-    // e.g. remove or hide the iframe
-  }
+window.addEventListener("message", (event) => {
+	if (event.data?.type === "close-game") {
+		// e.g. remove or hide the iframe
+	}
 });
 ```
 

@@ -16,7 +16,7 @@ const BACK_KEY_NAMES = new Set(['GoBack', 'XF86Back', 'BrowserBack']);
 const BACK_KEY_CODES = new Set([461, 10009]);
 
 /** Posted to the parent frame when the player asks to exit — see README. */
-export const CLOSE_MESSAGE_TYPE = 'frog-game:close';
+export const CLOSE_MESSAGE_TYPE = 'close-game';
 
 function isFramed() {
   try {
