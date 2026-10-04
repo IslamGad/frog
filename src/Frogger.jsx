@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import './Frogger.css';
+import { useExitOnRemoteBack } from './hooks/useExitOnRemoteBack';
+import { useAutoFocus } from './hooks/useAutoFocus';
 
 import frogFrame0 from './assets/frog-frames/frame-0.svg'; // crouch / at rest
 import frogFrame1 from './assets/frog-frames/frame-1.svg'; // launch
@@ -120,6 +122,16 @@ export default function Frogger() {
   const [best,  setBest]  = useState(0);
   const [lives, setLives] = useState(INIT_LIVES);
   const [cars,  setCars]  = useState([]);
+
+  // Back button only closes the game once a run is actually underway — on
+  // the idle start screen there's nothing to abandon yet.
+  useExitOnRemoteBack(phase !== 'idle');
+
+  // Autofocus the primary action on each overlay so the TV remote's OK
+  // button (native Enter/Space activation of the focused button) works
+  // immediately, without the player having to navigate to it first.
+  const startBtnRef      = useAutoFocus();
+  const playAgainBtnRef  = useAutoFocus();
 
   // DOM refs
   const frogEl   = useRef(null);
@@ -374,11 +386,14 @@ export default function Frogger() {
     const onKey = (e) => {
       const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
       if (map[e.key]) { e.preventDefault(); moveFrog(map[e.key]); }
-      if ((e.key === ' ' || e.key === 'Enter') && phaseR.current === 'idle') startGame();
+      // Starting the game on Enter/Space is handled natively: the Start
+      // Game / Play Again button is autofocused (useAutoFocus), so the TV
+      // remote's OK button activates it directly without needing a
+      // duplicate global shortcut here.
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [moveFrog, startGame]);
+  }, [moveFrog]);
 
   // ─── GSAP ticker: move cars + collision ───────────────────────────────────
   useEffect(() => {
@@ -514,7 +529,7 @@ export default function Frogger() {
                 <em>to move</em>
               </div>
               <p className="fg-sub">Score 1 point per lane · {INIT_LIVES} lives</p>
-              <button className="fg-btn" onClick={startGame}>▶ Start Game</button>
+              <button ref={startBtnRef} type="button" className="fg-btn" onClick={startGame}>▶ Start Game</button>
               <p className="fg-sub">or press Space / Enter</p>
             </div>
           </div>
@@ -527,7 +542,7 @@ export default function Frogger() {
               <h1>GAME OVER</h1>
               <p className="fg-score-big">{score} pts</p>
               {score === best && best > 0 && <p className="fg-new-best">🏆 New best!</p>}
-              <button className="fg-btn" onClick={startGame}>↺ Play Again</button>
+              <button ref={playAgainBtnRef} type="button" className="fg-btn" onClick={startGame}>↺ Play Again</button>
             </div>
           </div>
         )}

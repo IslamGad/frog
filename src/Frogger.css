@@ -325,15 +325,30 @@
   transition: background 0.18s, transform 0.1s;
 }
 
-.fg-btn:hover  { background: #2ecc71; transform: translateY(-1px); }
-.fg-btn:active { background: #1e8449; transform: translateY(0); }
+.fg-btn:hover,
+.fg-btn:focus-visible {
+  background: #2ecc71;
+  transform: translateY(-1px);
+  /* 10-foot UI: the currently focused/hovered button must be unmissable
+     from across the room, not just a subtle shade change. */
+  outline: 0.25rem solid #ffd166;
+  outline-offset: 0.2rem;
+}
+
+.fg-btn:active {
+  background: #1e8449;
+  transform: translateY(0);
+  outline: 0.25rem solid #ffd166;
+  outline-offset: 0.2rem;
+}
 
 .fg-card--dead .fg-btn {
   background: #c0392b;
 }
 
-.fg-card--dead .fg-btn:hover  { background: #e74c3c; }
-.fg-card--dead .fg-btn:active { background: #a93226; }
+.fg-card--dead .fg-btn:hover,
+.fg-card--dead .fg-btn:focus-visible { background: #e74c3c; }
+.fg-card--dead .fg-btn:active        { background: #a93226; }
 
 /* ─── Footer hint ────────────────────────────────────────────────────────── */
 .fg-hint {

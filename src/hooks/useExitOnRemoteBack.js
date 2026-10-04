@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 // Smart TV remotes' dedicated Back/Return button doesn't produce a
 // consistent signal across platforms — each vendor's browser reports it
@@ -47,22 +47,31 @@ function requestClose() {
  *
  * No-ops entirely outside an iframe: there's no parent to notify, and
  * capturing browser history on a normal page would be an unwelcome surprise.
+ *
+ * `hasStarted` gates whether Back actually closes the game: on the idle
+ * start screen there's no run in progress to abandon, so Back is left alone
+ * there and only takes effect once a game is underway. Read through a ref
+ * (rather than re-running the effect on every change) so the listeners
+ * registered once at mount always see the latest value.
  */
-export function useExitOnRemoteBack() {
+export function useExitOnRemoteBack(hasStarted) {
+  const hasStartedRef = useRef(hasStarted);
+  useEffect(() => { hasStartedRef.current = hasStarted; }, [hasStarted]);
+
   useEffect(() => {
     if (!isFramed()) return;
 
     history.pushState(null, '', location.href);
 
     const onPopState = () => {
-      requestClose();
+      if (hasStartedRef.current) requestClose();
       history.pushState(null, '', location.href);
     };
 
     const onKeyDown = (e) => {
       if (!BACK_KEY_NAMES.has(e.key) && !BACK_KEY_CODES.has(e.keyCode)) return;
       e.preventDefault();
-      requestClose();
+      if (hasStartedRef.current) requestClose();
     };
 
     window.addEventListener('popstate', onPopState);
