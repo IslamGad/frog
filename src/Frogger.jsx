@@ -54,6 +54,16 @@ const HOP_DURATION  = 0.25; // seconds per hop, grid-to-grid
 const HOP_HEIGHT    = 26;   // px visual rise at the peak of the arc
 const FINISH_HOLD   = 0.7;  // seconds to hold the fly-eaten pose before next level
 
+// Some Samsung TV browsers default the remote to "pointer" mode for ordinary
+// web pages: the D-pad moves an actual on-screen mouse cursor instead of
+// firing ArrowUp/Down/Left/Right keydowns, so the keyboard effect below
+// never sees anything and the frog can't hop at all. That cursor still
+// dispatches real pointermove events as it travels, though — accumulated
+// movement past this many real screen pixels (independent of the game's own
+// internal GAME_W/GAME_H coordinate space) is treated as a swipe and
+// triggers one hop in that direction, same as a single arrow keypress would.
+const SWIPE_THRESHOLD_PX = 28;
+
 const LANES = [
   { dir:  1, baseSpeed: 12, count: 2 },
   { dir: -1, baseSpeed: 2, count: 3 },
@@ -393,6 +403,36 @@ export default function Frogger() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, [moveFrog]);
+
+  // ─── Pointer swipe (TV "cursor" remote fallback) ───────────────────────────
+  useEffect(() => {
+    let lastX = null;
+    let lastY = null;
+    let accDx = 0;
+    let accDy = 0;
+
+    const onPointerMove = (e) => {
+      if (lastX !== null) {
+        accDx += e.clientX - lastX;
+        accDy += e.clientY - lastY;
+
+        if (Math.abs(accDx) >= SWIPE_THRESHOLD_PX && Math.abs(accDx) >= Math.abs(accDy)) {
+          moveFrog(accDx > 0 ? 'right' : 'left');
+          accDx = 0;
+          accDy = 0;
+        } else if (Math.abs(accDy) >= SWIPE_THRESHOLD_PX) {
+          moveFrog(accDy > 0 ? 'down' : 'up');
+          accDx = 0;
+          accDy = 0;
+        }
+      }
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    return () => window.removeEventListener('pointermove', onPointerMove);
   }, [moveFrog]);
 
   // ─── GSAP ticker: move cars + collision ───────────────────────────────────
